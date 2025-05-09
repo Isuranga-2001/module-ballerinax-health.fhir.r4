@@ -25,24 +25,10 @@ public isolated function findConceptsInValueSetFromCodeValue(r4:code|r4:Coding|r
 
     if codeValue is r4:code {
         code = codeValue;
-        result = (<Terminology>terminology).findConcept(<string>valueSet.url, code, valueSet.'version);
-        if result is CodeConceptDetails {
-            return result.concept;
-        } else {
-            return result;
-        }
-        // return findConceptFromCode(valueSet, code, (), terminology = terminology);
+        url = <r4:uri>valueSet.url;
     } else if codeValue is r4:Coding {
         code = <r4:code>codeValue.code;
         url = <r4:uri>codeValue.system;
-        // return findConceptFromCode(valueSet, code, url, terminology = terminology);
-
-        result = (<Terminology>terminology).findConcept(url, code, valueSet.'version);
-        if result is CodeConceptDetails {
-            return result.concept;
-        } else {
-            return result;
-        }
     } else {
         r4:Coding[]? codings = (<r4:CodeableConcept>codeValue).coding.clone();
         if codings != () && codings.length() > 0 {
@@ -57,14 +43,6 @@ public isolated function findConceptsInValueSetFromCodeValue(r4:code|r4:Coding|r
                 } else {
                     errors.push(result);
                 }
-                // r4:CodeSystemConcept[]|r4:CodeSystemConcept|r4:FHIRError result = findConceptFromCode(valueSet, code, url, terminology = terminology);
-                // if result is r4:CodeSystemConcept[] {
-                //     codeConceptDetailsList.push(...result);
-                // } else if result is r4:CodeSystemConcept {
-                //     codeConceptDetailsList.push(result);
-                // } else {
-                //     errors.push(result);
-                // }
             }
             if codeConceptDetailsList.length() < 1 {
                 return r4:createFHIRError(
@@ -90,6 +68,13 @@ public isolated function findConceptsInValueSetFromCodeValue(r4:code|r4:Coding|r
                             httpStatusCode = http:STATUS_BAD_REQUEST
                         );
         }
+    }
+
+    result = (<Terminology>terminology).findConcept(url, code, valueSet.'version);
+    if result is CodeConceptDetails {
+        return result.concept;
+    } else {
+        return result;
     }
 }
 
@@ -388,28 +373,26 @@ isolated function conceptToCoding(CodeConceptDetails conceptDetails) returns r4:
     return codingValue;
 }
 
-//Only for in-memory opertaions
-isolated function retrieveCodeSystemConcept(r4:CodeSystem codeSystem, r4:code|r4:Coding concept) returns r4:CodeSystemConcept|r4:FHIRError {
+isolated function retrieveCodeSystemConcept(r4:uri url, string? version, r4:code|r4:Coding concept, Terminology? terminology = inMemoryTerminology) returns r4:CodeSystemConcept|r4:FHIRError {
     if concept is r4:code {
-        CodeConceptDetails|r4:FHIRError conceptDetails = findConceptInCodeSystem(codeSystem.clone(), concept.clone());
+        CodeConceptDetails|r4:FHIRError conceptDetails = (<Terminology>terminology).findConcept(url, concept, version);
         if conceptDetails is CodeConceptDetails {
-            r4:CodeSystemConcept codeConcept = conceptDetails.concept;
-            if codeConcept is r4:CodeSystemConcept {
-                return codeConcept.clone();
-            }
+            return conceptDetails.concept;
         }
         return conceptDetails;
     } else {
-        CodeConceptDetails|r4:FHIRError conceptDetails = findConceptInCodeSystemFromCoding(
-                codeSystem.clone(), concept.clone());
+        if concept.code is r4:code {
+            CodeConceptDetails|r4:FHIRError conceptDetails = (<Terminology>terminology).findConcept(url, <r4:code>concept.code, version);        
 
-        if conceptDetails is CodeConceptDetails {
-            r4:CodeSystemConcept|r4:ValueSetComposeIncludeConcept temp = conceptDetails.concept;
-            if temp is r4:CodeSystemConcept {
-                return temp.clone();
+            if conceptDetails is CodeConceptDetails {
+                return conceptDetails.concept;
             }
+            return conceptDetails;
+        } else {
+            string msg = "No valid code found in the Coding";
+            log:printDebug(r4:createFHIRError(msg, r4:ERROR, r4:PROCESSING_NOT_FOUND).toBalString());
+            return r4:createFHIRError(msg, r4:ERROR, r4:PROCESSING_NOT_FOUND);
         }
-        return conceptDetails;
     }
 }
 

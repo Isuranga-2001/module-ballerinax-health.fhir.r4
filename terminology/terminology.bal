@@ -181,8 +181,7 @@ public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSy
             );
     }
 
-    // CodeConceptDetails|r4:FHIRError result = findConceptInCodeSystem(codeSystem, code);
-    CodeConceptDetails|r4:FHIRError result = (<Terminology>terminology).findConcept(<string>codeSystem.url, code, 'version);
+    CodeConceptDetails|r4:FHIRError result = (<Terminology>terminology).findConcept(<r4:uri>codeSystem.url, code, 'version);
     if result is CodeConceptDetails {
         return result.concept.clone();
     } else {
@@ -449,8 +448,19 @@ public isolated function subsumes(r4:code|r4:Coding conceptA, r4:code|r4:Coding 
                 );
     }
 
-    r4:CodeSystemConcept? conceptDetailsA = check retrieveCodeSystemConcept(codeSystem, conceptA.clone());
-    r4:CodeSystemConcept? conceptDetailsB = check retrieveCodeSystemConcept(codeSystem, conceptB.clone());
+    if codeSystem.url == () {
+        return r4:createFHIRError(
+                    string `Cannot find the URL of the CodeSystem with name: ${codeSystem.name.toString()}`,
+                    r4:ERROR,
+                    r4:INVALID_REQUIRED,
+                    diagnostic = string `Add a proper URL for the resource: http://hl7.org/fhir/R4/codesystem-definitions.html#CodeSystem.url`,
+                    errorType = r4:VALIDATION_ERROR,
+                    httpStatusCode = http:STATUS_BAD_REQUEST
+                );
+    }
+
+    r4:CodeSystemConcept? conceptDetailsA = check retrieveCodeSystemConcept(<r4:uri>codeSystem.url, codeSystem.version, conceptA.clone(), terminology);
+    r4:CodeSystemConcept? conceptDetailsB = check retrieveCodeSystemConcept(<r4:uri>codeSystem.url, codeSystem.version, conceptB.clone(), terminology);
 
     if conceptDetailsA != () && conceptDetailsB != () {
         if conceptDetailsA.code == conceptDetailsB.code && conceptDetailsA.display == conceptDetailsB.display {
