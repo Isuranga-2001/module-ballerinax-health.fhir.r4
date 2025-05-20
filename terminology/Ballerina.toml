@@ -6,3 +6,28 @@ distribution = "2201.12.2"
 authors = ["Ballerina"]
 keywords = ["Healthcare", "FHIR", "R4", "Terminology"]
 repository = "https://github.com/ballerina-platform/module-ballerinax-health.fhir.r4"
+
+[[dependency]]
+org = "ballerinax"
+name = "health.fhir.r4"
+version = "6.0.2"
+repository = "local"
+
+[[dependency]]
+org = "ballerinax"
+name = "health.fhir.r4.international401"
+version = "3.0.2"
+repository = "local"
+
+[[dependency]]
+org = "ballerinax"
+name = "health.fhir.r4.parser"
+version = "6.0.2"
+repository = "local"
+
+[[dependency]]
+org = "ballerinax"
+name = "health.fhir.r4.validator"
+version = "5.0.1"
+repository = "local"
+

@@ -17,27 +17,29 @@ import ballerina/time;
 import ballerinax/health.fhir.r4;
 
 public isolated function findConceptsInValueSetFromCodeValue(r4:code|r4:Coding|r4:CodeableConcept codeValue, r4:ValueSet valueSet, Terminology? terminology = inMemoryTerminology) returns r4:CodeSystemConcept[]|r4:CodeSystemConcept|r4:FHIRError {
-    r4:code code;
-    r4:uri url;
     r4:CodeSystemConcept[] codeConceptDetailsList = [];
-
     CodeConceptDetails|r4:FHIRError result;
 
     if codeValue is r4:code {
-        code = codeValue;
-        url = <r4:uri>valueSet.url;
+        result = (<Terminology>terminology).findConcept(<r4:uri>valueSet.url, codeValue, valueSet.'version);
+        if result is CodeConceptDetails {
+            return result.concept;
+        } else {
+            return result;
+        }
     } else if codeValue is r4:Coding {
-        code = <r4:code>codeValue.code;
-        url = <r4:uri>codeValue.system;
+        result = (<Terminology>terminology).findConcept(<r4:uri>codeValue.system, <r4:code>codeValue.code, valueSet.'version);
+        if result is CodeConceptDetails {
+            return result.concept;
+        } else {
+            return result;
+        }
     } else {
         r4:Coding[]? codings = (<r4:CodeableConcept>codeValue).coding.clone();
         if codings != () && codings.length() > 0 {
             r4:FHIRError[] errors = [];
             foreach r4:Coding c in codings {
-                code = <r4:code>c.code;
-                url = <r4:uri>c.system;
-
-                result = (<Terminology>terminology).findConcept(url, code, valueSet.'version);
+                result = (<Terminology>terminology).findConcept(<r4:uri>c.system, <r4:code>c.code, valueSet.'version);
                 if result is CodeConceptDetails {
                     codeConceptDetailsList.push(result.concept);
                 } else {
@@ -68,13 +70,6 @@ public isolated function findConceptsInValueSetFromCodeValue(r4:code|r4:Coding|r
                             httpStatusCode = http:STATUS_BAD_REQUEST
                         );
         }
-    }
-
-    result = (<Terminology>terminology).findConcept(url, code, valueSet.'version);
-    if result is CodeConceptDetails {
-        return result.concept;
-    } else {
-        return result;
     }
 }
 
@@ -183,7 +178,7 @@ isolated function findConceptInValueSetOrReturnValueSetURIs(r4:ValueSet valueSet
         }
     }
     return r4:createFHIRError(
-                            string `Code: ${code.toString()} was not found in the ValueSet: ${valueSet.url.toString()}`,
+                            "Concept not found in the ValueSet",
                             r4:ERROR,
                             r4:PROCESSING_NOT_FOUND,
                             errorType = r4:PROCESSING_ERROR,
@@ -261,13 +256,18 @@ isolated function findConceptFromCode(r4:ValueSet valueSet, r4:code codeValue, r
         foreach r4:uri valusetUrl in result {
             r4:ValueSet|r4:FHIRError subValueSet = (<Terminology>terminology).findValueSet(system = valusetUrl);
             if subValueSet is r4:ValueSet {
-                CodeConceptDetails[]|r4:FHIRError subResult = findConceptInValueSet(subValueSet, codeValue);
-                if subResult is CodeConceptDetails[] {
-                    foreach CodeConceptDetails codeConcept in subResult {
-                        if codeUrl == () || codeConcept.url == codeUrl {
-                            codeConceptList.push(codeConcept.concept.clone());
-                        }
-                    }
+                // CodeConceptDetails[]|r4:FHIRError subResult = findConceptInValueSet(subValueSet, codeValue);
+                CodeConceptDetails|r4:FHIRError subResult = (<Terminology>terminology).findConcept(<r4:uri>subValueSet.url, codeValue, version = subValueSet.version);
+                // if subResult is CodeConceptDetails[] {
+                //     foreach CodeConceptDetails codeConcept in subResult {
+                //         if codeUrl == () || codeConcept.url == codeUrl {
+                //             codeConceptList.push(codeConcept.concept.clone());
+                //         }
+                //     }
+                // }
+
+                if subResult is CodeConceptDetails && ( codeUrl == () || subResult.url == codeUrl){
+                    codeConceptList.push(subResult.concept.clone());
                 }
             }
             // ignore all other cases as this is the second level

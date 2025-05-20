@@ -214,7 +214,7 @@ public isolated function valueSetLookUp(r4:code|r4:Coding|r4:CodeableConcept cod
         if tmpValueSet is r4:ValueSet {
             valueSet = tmpValueSet;
         } else {
-            return r4:createFHIRError(string `Cannot find a ValueSet for the provided system URL: ${system}`,
+            return r4:createFHIRError(string `Cannot find a ValueSet for the provided system URL: ${system}${version is string ? "|" + version : ""}`,
                         r4:ERROR,
                         r4:INVALID,
                         errorType = r4:PROCESSING_ERROR,
