@@ -366,28 +366,26 @@ isolated function conceptToCoding(CodeConceptDetails conceptDetails) returns r4:
     return codingValue;
 }
 
-//Only for in-memory opertaions
-isolated function retrieveCodeSystemConcept(r4:CodeSystem codeSystem, r4:code|r4:Coding concept) returns r4:CodeSystemConcept|r4:FHIRError {
+isolated function retrieveCodeSystemConcept(r4:uri url, string? version, r4:code|r4:Coding concept, Terminology? terminology = inMemoryTerminology) returns r4:CodeSystemConcept|r4:FHIRError {
     if concept is r4:code {
-        CodeConceptDetails|r4:FHIRError conceptDetails = findConceptInCodeSystem(codeSystem.clone(), concept.clone());
+        CodeConceptDetails|r4:FHIRError conceptDetails = (<Terminology>terminology).findConcept(url, concept, version);
         if conceptDetails is CodeConceptDetails {
-            r4:CodeSystemConcept codeConcept = conceptDetails.concept;
-            if codeConcept is r4:CodeSystemConcept {
-                return codeConcept.clone();
-            }
+            return conceptDetails.concept;
         }
         return conceptDetails;
     } else {
-        CodeConceptDetails|r4:FHIRError conceptDetails = findConceptInCodeSystemFromCoding(
-                codeSystem.clone(), concept.clone());
+        if concept.code is r4:code {
+            CodeConceptDetails|r4:FHIRError conceptDetails = (<Terminology>terminology).findConcept(url, <r4:code>concept.code, version);        
 
-        if conceptDetails is CodeConceptDetails {
-            r4:CodeSystemConcept|r4:ValueSetComposeIncludeConcept temp = conceptDetails.concept;
-            if temp is r4:CodeSystemConcept {
-                return temp.clone();
+            if conceptDetails is CodeConceptDetails {
+                return conceptDetails.concept;
             }
+            return conceptDetails;
+        } else {
+            string msg = "No valid code found in the Coding";
+            log:printDebug(r4:createFHIRError(msg, r4:ERROR, r4:PROCESSING_NOT_FOUND).toBalString());
+            return r4:createFHIRError(msg, r4:ERROR, r4:PROCESSING_NOT_FOUND);
         }
-        return conceptDetails;
     }
 }
 

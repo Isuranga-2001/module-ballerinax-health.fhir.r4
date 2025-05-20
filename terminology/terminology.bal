@@ -126,18 +126,18 @@ public isolated function searchValueSets(map<r4:RequestSearchParameter[]> params
 # + terminology - Terminology - optional parameter allowing you to pass a custom implementation of the Terminology and by default we use InMemoryTerminology.
 # + return - Return list of Concepts if processing is successful, return FHIRError if fails
 public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSystem? cs = (),
-        r4:uri? system = (), string? version = (), Terminology? terminology = inMemoryTerminology) returns r4:CodeSystemConcept[]|r4:CodeSystemConcept|r4:FHIRError {
+        r4:uri? system = (), string? 'version = (), Terminology? terminology = inMemoryTerminology) returns r4:CodeSystemConcept[]|r4:CodeSystemConcept|r4:FHIRError {
     // Create and initialize a CodeSystem record with the mandatory fields
     r4:CodeSystem codeSystem = {content: "example", status: "unknown"};
     r4:CodeSystem|error ensured = cs.clone().ensureType();
     if ensured is r4:CodeSystem {
         codeSystem = ensured;
     } else if codeValue is r4:code && system is r4:uri {
-        r4:CodeSystem|r4:FHIRError tmpCodeSystem = (<Terminology>terminology).findCodeSystem(system, version);
+        r4:CodeSystem|r4:FHIRError tmpCodeSystem = (<Terminology>terminology).findCodeSystem(system, version = 'version);
         if tmpCodeSystem is r4:CodeSystem {
             codeSystem = tmpCodeSystem;
         } else {
-            return r4:createFHIRError(string `Cannot find a CodeSystem for the provided system URL: ${system}`,
+            return r4:createFHIRError(string `Cannot find a CodeSystem for the provided system URL: ${system}${'version is string ? ", version: " + 'version : ""}`,
                             r4:ERROR,
                             r4:INVALID,
                             errorType = r4:PROCESSING_ERROR,
@@ -145,11 +145,11 @@ public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSy
                         );
         }
     } else if codeValue is r4:Coding {
-        r4:CodeSystem|r4:FHIRError tmpCodeSystem = (<Terminology>terminology).findCodeSystem(codeValue.system, version);
+        r4:CodeSystem|r4:FHIRError tmpCodeSystem = (<Terminology>terminology).findCodeSystem(codeValue.system, version = 'version);
         if tmpCodeSystem is r4:CodeSystem {
             codeSystem = tmpCodeSystem;
         } else {
-            return r4:createFHIRError(string `Cannot find a CodeSystem for the provided system URL: ${<string>codeValue.system}`,
+            return r4:createFHIRError(string `Cannot find a CodeSystem for the provided system URL: ${<string>codeValue.system}${'version is string ? ", version: " + 'version : ""}`,
                             r4:ERROR,
                             r4:INVALID,
                             errorType = r4:PROCESSING_ERROR,
@@ -180,7 +180,8 @@ public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSy
                 httpStatusCode = http:STATUS_BAD_REQUEST
             );
     }
-    CodeConceptDetails|r4:FHIRError result = findConceptInCodeSystem(codeSystem, code);
+
+    CodeConceptDetails|r4:FHIRError result = (<Terminology>terminology).findConcept(<r4:uri>codeSystem.url, code, 'version);
     if result is CodeConceptDetails {
         return result.concept.clone();
     } else {
@@ -447,8 +448,19 @@ public isolated function subsumes(r4:code|r4:Coding conceptA, r4:code|r4:Coding 
                 );
     }
 
-    r4:CodeSystemConcept? conceptDetailsA = check retrieveCodeSystemConcept(codeSystem, conceptA.clone());
-    r4:CodeSystemConcept? conceptDetailsB = check retrieveCodeSystemConcept(codeSystem, conceptB.clone());
+    if codeSystem.url == () {
+        return r4:createFHIRError(
+                    string `Cannot find the URL of the CodeSystem with name: ${codeSystem.name.toString()}`,
+                    r4:ERROR,
+                    r4:INVALID_REQUIRED,
+                    diagnostic = string `Add a proper URL for the resource: http://hl7.org/fhir/R4/codesystem-definitions.html#CodeSystem.url`,
+                    errorType = r4:VALIDATION_ERROR,
+                    httpStatusCode = http:STATUS_BAD_REQUEST
+                );
+    }
+
+    r4:CodeSystemConcept? conceptDetailsA = check retrieveCodeSystemConcept(<r4:uri>codeSystem.url, codeSystem.version, conceptA.clone(), terminology);
+    r4:CodeSystemConcept? conceptDetailsB = check retrieveCodeSystemConcept(<r4:uri>codeSystem.url, codeSystem.version, conceptB.clone(), terminology);
 
     if conceptDetailsA != () && conceptDetailsB != () {
         if conceptDetailsA.code == conceptDetailsB.code && conceptDetailsA.display == conceptDetailsB.display {
