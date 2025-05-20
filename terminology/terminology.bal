@@ -204,15 +204,19 @@ public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSy
 public isolated function valueSetLookUp(r4:code|r4:Coding|r4:CodeableConcept codeValue, r4:ValueSet? vs = (),
         r4:uri? system = (), string? version = (), Terminology? terminology = inMemoryTerminology) returns r4:CodeSystemConcept[]|r4:CodeSystemConcept|r4:FHIRError {
     // Create and initialize a ValueSet record with the mandatory fields
-    r4:ValueSet valueSet = {status: "unknown"};
+    // r4:ValueSet valueSet = {status: "unknown"};
+    r4:uri? valueSerUrl = ();
+    string? valueSetVersion = ();
 
     r4:ValueSet|error ensured = vs.clone().ensureType();
     if ensured is r4:ValueSet {
-        valueSet = ensured;
+        valueSerUrl = ensured.url;
+        valueSetVersion = ensured.version;
     } else if system is r4:uri {
         r4:ValueSet|r4:FHIRError tmpValueSet = (<Terminology>terminology).findValueSet(system, version);
         if tmpValueSet is r4:ValueSet {
-            valueSet = tmpValueSet;
+            valueSerUrl = system;
+            valueSetVersion = version;
         } else {
             return r4:createFHIRError(string `Cannot find a ValueSet for the provided system URL: ${system}${version is string ? "|" + version : ""}`,
                         r4:ERROR,
@@ -231,7 +235,7 @@ public isolated function valueSetLookUp(r4:code|r4:Coding|r4:CodeableConcept cod
                     httpStatusCode = http:STATUS_BAD_REQUEST
                 );
     }
-    return findConceptsInValueSetFromCodeValue(codeValue, valueSet, terminology);
+    return findConceptsInValueSetFromCodeValue(codeValue, <r4:uri>valueSerUrl, valueSetVersion, terminology);
 }
 
 # Extract all the concepts from a given valueSet based on the given filter parameters.
