@@ -21,14 +21,13 @@ public isolated function findConceptsInValueSetFromCodeValue(r4:code|r4:Coding|r
     r4:uri url;
     r4:CodeSystemConcept[] codeConceptDetailsList = [];
 
-    CodeConceptDetails|r4:FHIRError result;
-
     if codeValue is r4:code {
         code = codeValue;
-        url = <r4:uri>valueSet.url;
+        return findConceptFromCode(valueSet, code, (), terminology = terminology);
     } else if codeValue is r4:Coding {
         code = <r4:code>codeValue.code;
         url = <r4:uri>codeValue.system;
+        return findConceptFromCode(valueSet, code, url, terminology = terminology);
     } else {
         r4:Coding[]? codings = (<r4:CodeableConcept>codeValue).coding.clone();
         if codings != () && codings.length() > 0 {
@@ -36,10 +35,11 @@ public isolated function findConceptsInValueSetFromCodeValue(r4:code|r4:Coding|r
             foreach r4:Coding c in codings {
                 code = <r4:code>c.code;
                 url = <r4:uri>c.system;
-
-                result = (<Terminology>terminology).findConcept(url, code, valueSet.'version);
-                if result is CodeConceptDetails {
-                    codeConceptDetailsList.push(result.concept);
+                r4:CodeSystemConcept[]|r4:CodeSystemConcept|r4:FHIRError result = findConceptFromCode(valueSet, code, url, terminology = terminology);
+                if result is r4:CodeSystemConcept[] {
+                    codeConceptDetailsList.push(...result);
+                } else if result is r4:CodeSystemConcept {
+                    codeConceptDetailsList.push(result);
                 } else {
                     errors.push(result);
                 }
@@ -68,13 +68,6 @@ public isolated function findConceptsInValueSetFromCodeValue(r4:code|r4:Coding|r
                             httpStatusCode = http:STATUS_BAD_REQUEST
                         );
         }
-    }
-
-    result = (<Terminology>terminology).findConcept(url, code, valueSet.'version);
-    if result is CodeConceptDetails {
-        return result.concept;
-    } else {
-        return result;
     }
 }
 
