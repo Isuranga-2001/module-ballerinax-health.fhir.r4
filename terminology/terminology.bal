@@ -127,15 +127,20 @@ public isolated function searchValueSets(map<r4:RequestSearchParameter[]> params
 # + return - Return list of Concepts if processing is successful, return FHIRError if fails
 public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSystem? cs = (),
         r4:uri? system = (), string? 'version = (), Terminology? terminology = inMemoryTerminology) returns r4:CodeSystemConcept[]|r4:CodeSystemConcept|r4:FHIRError {
-    // Create and initialize a CodeSystem record with the mandatory fields
-    r4:CodeSystem codeSystem = {content: "example", status: "unknown"};
     r4:CodeSystem|error ensured = cs.clone().ensureType();
-    if ensured is r4:CodeSystem {
-        codeSystem = ensured;
+    r4:uri codeSystemUrl;
+    if ensured is r4:CodeSystem && ensured.url is r4:uri {
+        codeSystemUrl = <r4:uri>ensured.url;
     } else if codeValue is r4:code && system is r4:uri {
-        r4:CodeSystem|r4:FHIRError tmpCodeSystem = (<Terminology>terminology).findCodeSystem(system, version = 'version);
-        if tmpCodeSystem is r4:CodeSystem {
-            codeSystem = tmpCodeSystem;
+        boolean isExist;
+        if version is string {
+            isExist = (<Terminology>terminology).isCodeSystemExist(system, version);
+        } else {
+            r4:CodeSystem|r4:FHIRError tmpValueSet = (<Terminology>terminology).findCodeSystem(system, version);
+            isExist = tmpValueSet is r4:CodeSystem;
+        }
+        if isExist {
+            codeSystemUrl = system;
         } else {
             return r4:createFHIRError(string `Cannot find a CodeSystem for the provided system URL: ${system}${'version is string ? ", version: " + 'version : ""}`,
                             r4:ERROR,
@@ -145,9 +150,15 @@ public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSy
                         );
         }
     } else if codeValue is r4:Coding {
-        r4:CodeSystem|r4:FHIRError tmpCodeSystem = (<Terminology>terminology).findCodeSystem(codeValue.system, version = 'version);
-        if tmpCodeSystem is r4:CodeSystem {
-            codeSystem = tmpCodeSystem;
+        boolean isExist;
+        if version is string {
+            isExist = (<Terminology>terminology).isCodeSystemExist(<r4:uri>codeValue.system, version);
+        } else {
+            r4:CodeSystem|r4:FHIRError tmpValueSet = (<Terminology>terminology).findCodeSystem(codeValue.system, version);
+            isExist = tmpValueSet is r4:CodeSystem;
+        }
+        if isExist && codeValue.system is r4:uri {
+            codeSystemUrl = <r4:uri>codeValue.system;
         } else {
             return r4:createFHIRError(string `Cannot find a CodeSystem for the provided system URL: ${<string>codeValue.system}${'version is string ? ", version: " + 'version : ""}`,
                             r4:ERROR,
@@ -181,7 +192,7 @@ public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSy
             );
     }
 
-    CodeConceptDetails|r4:FHIRError result = (<Terminology>terminology).findConcept(<r4:uri>codeSystem.url, code, 'version);
+    CodeConceptDetails|r4:FHIRError result = (<Terminology>terminology).findConcept(codeSystemUrl, code, 'version);
     if result is CodeConceptDetails {
         return result.concept.clone();
     } else {
@@ -204,7 +215,6 @@ public isolated function codeSystemLookUp(r4:code|r4:Coding codeValue, r4:CodeSy
 public isolated function valueSetLookUp(r4:code|r4:Coding|r4:CodeableConcept codeValue, r4:ValueSet? vs = (),
         r4:uri? system = (), string? version = (), Terminology? terminology = inMemoryTerminology) returns r4:CodeSystemConcept[]|r4:CodeSystemConcept|r4:FHIRError {
     // Create and initialize a ValueSet record with the mandatory fields
-    // r4:ValueSet valueSet = {status: "unknown"};
     r4:uri? valueSerUrl = ();
     string? valueSetVersion = ();
 
@@ -213,8 +223,14 @@ public isolated function valueSetLookUp(r4:code|r4:Coding|r4:CodeableConcept cod
         valueSerUrl = ensured.url;
         valueSetVersion = ensured.version;
     } else if system is r4:uri {
-        r4:ValueSet|r4:FHIRError tmpValueSet = (<Terminology>terminology).findValueSet(system, version);
-        if tmpValueSet is r4:ValueSet {
+        boolean isExist;
+        if version is string {
+            isExist = (<Terminology>terminology).isValueSetExist(system, version);
+        } else {
+            r4:ValueSet|r4:FHIRError tmpValueSet = (<Terminology>terminology).findValueSet(system, version);
+            isExist = tmpValueSet is r4:ValueSet;
+        }
+        if isExist {
             valueSerUrl = system;
             valueSetVersion = version;
         } else {
