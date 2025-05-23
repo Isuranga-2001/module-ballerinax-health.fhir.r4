@@ -373,7 +373,8 @@ public isolated function valueSetExpansion(map<r4:RequestSearchParameter[]>? sea
                 );
     }
 
-    ValueSetExpansionDetails? details = getAllConceptInValueSet(valueSet);
+    // this function need terminology implementation, but use in-memory implementation
+    ValueSetExpansionDetails? details = getAllConceptInValueSet(valueSet, terminology);
 
     if details is ValueSetExpansionDetails {
         r4:CodeSystemConcept[]|r4:ValueSetComposeIncludeConcept[] concepts = details.concepts;
