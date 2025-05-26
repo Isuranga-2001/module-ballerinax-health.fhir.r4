@@ -202,13 +202,16 @@ isolated function getAllConceptInValueSet(r4:ValueSet valueSet) returns (ValueSe
                     return concepts.clone();
                 } else {
                     // Find CodeSystem
-                    r4:CodeSystem|r4:FHIRError codeSystem = readCodeSystemByUrl(systemValue);
+                    // this function need terminology implementation, but use in-memory implementation
+                    r4:CodeSystem|r4:FHIRError codeSystem = readCodeSystemByUrl(systemValue, terminology = terminology_source);
                     if codeSystem is r4:CodeSystem {
+                        // this returns empty concpet arrat, because database connected code systems does not have concepts within the codesystems table
                         ValueSetExpansionDetails? result = getAllConceptInCodeSystem(codeSystem);
                         if result != () {
                             return result.clone();
                         }
                     } else {
+                        // io:println("Error in finding CodeSystem, ", codeSystem.toBalString());
                         log:printDebug(codeSystem.toBalString());
                     }
                 }
@@ -218,11 +221,12 @@ isolated function getAllConceptInValueSet(r4:ValueSet valueSet) returns (ValueSe
                 if valueSetResult != () {
                     //+ Rule: A value set include/exclude SHALL have a value set or a system
                     foreach r4:canonical valueSetEntry in valueSetResult {
+                        // this function need terminology implementation, but use in-memory implementation
                         r4:ValueSet|r4:FHIRError refValueSet = readValueSetByUrl(valueSetEntry);
 
                         if refValueSet is r4:ValueSet {
                             ValueSetExpansionDetails? concept =
-                                                    getAllConceptInValueSet(refValueSet.clone());
+                                                    getAllConceptInValueSet(refValueSet.clone(), terminology_source);
                             if concept != () {
                                 return concept.clone();
                             }
@@ -369,6 +373,20 @@ isolated function modifySearchParamsWithPagination(map<r4:RequestSearchParameter
         count: count,
         offset: offset
     };
+}
+
+isolated function isAChildConcept(r4:code targetCode, r4:CodeSystemConcept[] conceptsInCurrentConcept) returns boolean {
+    foreach r4:CodeSystemConcept currentConcept in conceptsInCurrentConcept {
+        if currentConcept.code == targetCode {
+            return true;
+        }
+        if currentConcept.concept is r4:CodeSystemConcept[] {
+            if isAChildConcept(targetCode, <r4:CodeSystemConcept[]>currentConcept.concept) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 type PaginationSearchParamsResponse record {
