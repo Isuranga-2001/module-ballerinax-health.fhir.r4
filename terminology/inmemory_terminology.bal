@@ -240,7 +240,7 @@ isolated class InMemoryTerminology {
                 r4:ERROR,
                 r4:INVALID_REQUIRED,
                 errorType = r4:PROCESSING_ERROR,
-                httpStatusCode = 404
+                httpStatusCode = http:STATUS_BAD_REQUEST
             );
         } else if conceptDetails is r4:FHIRError {
             return conceptDetails.clone();
@@ -253,7 +253,7 @@ isolated class InMemoryTerminology {
             r4:ERROR,
             r4:PROCESSING_NOT_FOUND,
             errorType = r4:PROCESSING_ERROR,
-            httpStatusCode = 404
+            httpStatusCode = http:STATUS_BAD_REQUEST
         );
     }
 
@@ -466,6 +466,10 @@ isolated class InMemoryTerminology {
                     }
                 }
             } else if conceptResults is CodeConceptDetails[] {
+                // Note: Although duplicate codes can appear under the same system in ValueSet.compose.include,
+                // the FHIR specification allows this redundancy. However, during expansion, the terminology
+                // service automatically de-duplicates concepts, so only unique codes are returned.
+                // Reference: https://hl7.org/fhir/valueset-definitions.html#ValueSet.compose.include.concept
                 return conceptResults[0];
             } else {
                 result = <r4:FHIRError>conceptResults;
