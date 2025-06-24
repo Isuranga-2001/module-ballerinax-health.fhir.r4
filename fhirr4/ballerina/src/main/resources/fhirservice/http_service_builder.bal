@@ -22,8 +22,8 @@ isolated function getHttpService(Holder h, r4:ResourceAPIConfig apiConfig, strin
         private final Holder holder = h;
         private final FHIRPreprocessor preprocessor = new (apiConfig);
 
-        public function createInterceptors() returns [FHIRResponseErrorInterceptor, FHIRResponseInterceptor] {
-            return [new FHIRResponseErrorInterceptor(), new FHIRResponseInterceptor(apiConfig)];
+        public function createInterceptors() returns [FHIRResponseErrorInterceptor, FHIRResponseInterceptor, AnalyticsResponseInterceptor] {
+            return [new FHIRResponseErrorInterceptor(), new FHIRResponseInterceptor(apiConfig), new AnalyticsResponseInterceptor(apiConfig)];
         }
 
         isolated resource function get [string... path](http:Request req, http:RequestContext ctx) returns any|error {
@@ -177,7 +177,7 @@ isolated function getHttpService(Holder h, r4:ResourceAPIConfig apiConfig, strin
                     if payload is json || payload is http:NoContentError {
                         // An operation with no parameters but affects the state is invoked using an empty body
                         json? operationPayload = payload is http:NoContentError ? () : payload;
-                        string operation = paths[path.length() - 1].substring(1);
+                        string operation = paths[paths.length() - 1].substring(1);
                         r4:FHIRInteractionLevel operationScope = getRequestOperationScope(operation,
                                 fhirResource, paths);
                         if isHavingPathParam(resourceMethod) { // Instance level operation 
