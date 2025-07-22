@@ -229,10 +229,14 @@ isolated class InMemoryTerminology {
             return valuesetConceptDetails;
         }
 
-        CodeConceptDetails|r4:FHIRError? conceptDetails = self.findConceptInCodeSystem(system, code, version);
-        if conceptDetails is CodeConceptDetails {
-            return conceptDetails;
-        } 
+        CodeConceptDetails|r4:FHIRError? conceptDetails = ();
+        r4:CodeSystem|r4:FHIRError findCodeSystemResult = self.findCodeSystem(system, (), version);
+        if findCodeSystemResult is r4:CodeSystem {
+            conceptDetails = findConceptInCodeSystem(findCodeSystemResult, code);
+            if conceptDetails is CodeConceptDetails {
+                return conceptDetails;
+            } 
+        }
 
         if conceptDetails is () && valuesetConceptDetails is () {
             return r4:createFHIRError(
@@ -418,13 +422,13 @@ isolated class InMemoryTerminology {
         }
     }
 
-    private isolated function findConceptInCodeSystem(r4:uri system, r4:code code, string? version) returns CodeConceptDetails|r4:FHIRError? {
-        r4:CodeSystem|r4:FHIRError findCodeSystemResult = self.findCodeSystem(system, (), version);
-        if findCodeSystemResult is r4:CodeSystem {
-            return findConceptInCodeSystem(findCodeSystemResult, code);
-        }
-        return;
-    }
+    // private isolated function findConceptInCodeSystem(r4:uri system, r4:code code, string? version) returns CodeConceptDetails|r4:FHIRError? {
+    //     r4:CodeSystem|r4:FHIRError findCodeSystemResult = self.findCodeSystem(system, (), version);
+    //     if findCodeSystemResult is r4:CodeSystem {
+    //         return findConceptInCodeSystem(findCodeSystemResult, code);
+    //     }
+    //     return;
+    // }
 
     private isolated function findConceptInValueSet(r4:uri system, r4:code code, string? version) returns CodeConceptDetails|r4:FHIRError? {
         CodeConceptDetails|r4:FHIRError? result = ();

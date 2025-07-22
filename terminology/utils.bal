@@ -203,7 +203,7 @@ isolated function getAllConceptInValueSet(r4:ValueSet valueSet) returns (ValueSe
                 } else {
                     // Find CodeSystem
                     // this function need terminology implementation, but use in-memory implementation
-                    r4:CodeSystem|r4:FHIRError codeSystem = readCodeSystemByUrl(systemValue, terminology = terminology_source);
+                    r4:CodeSystem|r4:FHIRError codeSystem = readCodeSystemByUrl(systemValue);
                     if codeSystem is r4:CodeSystem {
                         // this returns empty concpet arrat, because database connected code systems does not have concepts within the codesystems table
                         ValueSetExpansionDetails? result = getAllConceptInCodeSystem(codeSystem);
@@ -226,7 +226,7 @@ isolated function getAllConceptInValueSet(r4:ValueSet valueSet) returns (ValueSe
 
                         if refValueSet is r4:ValueSet {
                             ValueSetExpansionDetails? concept =
-                                                    getAllConceptInValueSet(refValueSet.clone(), terminology_source);
+                                                    getAllConceptInValueSet(refValueSet.clone());
                             if concept != () {
                                 return concept.clone();
                             }
